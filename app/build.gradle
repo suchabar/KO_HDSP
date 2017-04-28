@@ -1,0 +1,41 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 25
+    buildToolsVersion "25.0.1"
+    defaultConfig {
+        applicationId "cz.barush.shoporganizer"
+        minSdkVersion 21
+        targetSdkVersion 25
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    configurations.all {
+        resolutionStrategy.force 'com.google.code.findbugs:jsr305:1.3.9'
+    }
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+    })
+    compile 'com.google.android.gms:play-services-maps:10.2.1'
+    compile group: 'com.google.http-client', name: 'google-http-client-jackson2', version: '1.17.0-rc'
+    compile files('libs/gurobi.jar')
+    compile 'org.projectlombok:lombok:1.16.14'
+    compile 'com.android.support:appcompat-v7:25.0.1'
+    compile 'com.google.android.gms:play-services-maps:10.2.1'
+    compile 'com.android.support.constraint:constraint-layout:1.0.1'
+    compile 'com.google.android.gms:play-services-places:10.2.1'
+    compile 'com.google.api-client:google-api-client:1.22.0'
+    compile 'com.android.support:design:25.0.1'
+    testCompile 'junit:junit:4.12'
+}

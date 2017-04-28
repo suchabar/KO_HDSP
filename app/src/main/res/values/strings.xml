@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">ShopOrganizer</string>
+    <string name="title_activity_maps">Map</string>
+    <string name="title_activity_selection_of_food">SelectionOfFoodActivity</string>
+
+    <string-array name="activities_intensities">
+        <item>No activity</item>
+        <item>Light intensity</item>
+        <item>Average intensity</item>
+        <item>High intensity</item>
+        <item>Extra high intensity</item>
+    </string-array>
+</resources>
