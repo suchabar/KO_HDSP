@@ -20,11 +20,23 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Accessors(chain = true)
-@EqualsAndHashCode(exclude={"location", "distance", "priceList"})
+@EqualsAndHashCode(exclude={"location", "priceList"})
 public class Supermarket
 {
     Location location;
     String name;
-    int distance;
     HashMap<Food, Integer> priceList;
+
+    @Getter
+    @AllArgsConstructor
+    public enum SupermarketType{
+        ALBERT("Albert"),
+        BILLA("Billa"),
+        KAUFLAND("Kaufland"),
+        GLOBUS("Globus"),
+        TESCO("Tesco"),
+        LIDL("Lidl");
+
+        private final String name;
+    }
 }

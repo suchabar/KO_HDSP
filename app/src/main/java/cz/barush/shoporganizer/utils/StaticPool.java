@@ -5,8 +5,10 @@ import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
 import cz.barush.shoporganizer.persistance.entity.Food;
 import cz.barush.shoporganizer.persistance.entity.Supermarket;
@@ -35,7 +37,7 @@ public class StaticPool
         return mInstance;
     }
 
-    public static HashMap<Food, Integer> initializePriceList(Supermarket supermarket)
+    public static HashMap<Food, Integer> initializePriceList()
     {
         HashMap<Food, Integer> priceList = new HashMap<>();
         if(grains == null)initializeFood();
@@ -51,7 +53,6 @@ public class StaticPool
         for (int i = 0; i < oilSweet.size(); i++)priceList.put(oilSweet.get(i), oilSweetPrices[i] + (int)(Math.random() * (0.5*oilSweetPrices[i])));
 
         return priceList;
-
     }
 
     public static List<List<Food>> initializeFood()

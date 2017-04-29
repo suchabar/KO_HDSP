@@ -40,8 +40,8 @@ public class User
     int eatenFats;
     int eatenFibres;
 
-    //In minutes
-    int maxTimeSpentOnShopping = 60;
+    //In metres
+    int maxRadius = 1000;
     Location homeLocation;
     Location currentLocation;
 
