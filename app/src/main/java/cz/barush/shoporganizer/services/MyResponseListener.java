@@ -3,13 +3,13 @@ package cz.barush.shoporganizer.services;
 import android.util.Log;
 
 import com.android.volley.Response;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import cz.barush.shoporganizer.utils.Computation;
-import gurobi.GRBException;
 
 import static cz.barush.shoporganizer.services.AppConfig.TAG;
 
@@ -42,13 +42,13 @@ public class MyResponseListener implements Response.Listener<JSONObject>
             JSONObject distOb = newDisTimeOb.getJSONObject("distance");
             Computation.distances[i][j] = Integer.valueOf(distOb.getString("value"));
             Computation.pendingRequests--;
-            if(Computation.pendingRequests == 0)Computation.continueGetBestCombination();
+            if(Computation.pendingRequests == 0)Computation.getBestCombination2();
         }
         catch (JSONException e)
         {
             e.printStackTrace();
         }
-        catch (GRBException e)
+        catch (JsonProcessingException e)
         {
             e.printStackTrace();
         }

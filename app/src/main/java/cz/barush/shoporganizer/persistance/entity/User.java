@@ -22,17 +22,17 @@ import lombok.experimental.FieldDefaults;
 public class User
 {
     String name;
-    Gender gender;
-    int age;
-    int height;
-    int weight;
+    Gender gender = Gender.WOMAN;
+    int age = 23;
+    int height = 179;
+    int weight = 63;
     ActivityIntensity activity = ActivityIntensity.LIGHT_INTENSITY;
 
-    int basalEnergy;
-    int basalProteins;
-    int basalCarbs;
-    int basalFats;
-    int basalFibres;
+    int basalEnergy = 6500;
+    int basalProteins = 70;
+    int basalCarbs = 170;
+    int basalFats = 40;
+    int basalFibres = 28;
 
     int eatenEnergy;
     int eatenProteins;
@@ -41,7 +41,7 @@ public class User
     int eatenFibres;
 
     //In metres
-    int maxRadius = 1000;
+    int maxDistance = 6000;
     Location homeLocation;
     Location currentLocation;
 

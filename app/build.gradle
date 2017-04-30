@@ -17,15 +17,24 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    packagingOptions {
+        exclude 'META-INF/NOTICE' // will not include NOTICE file
+        exclude 'META-INF/LICENSE' // will not include LICENSE file
+        // as noted by @Vishnuvathsan you may also need to include
+        // variations on the file name. It depends on your dependencies.
+        // Some other common variations on notice and license file names
+        exclude 'META-INF/notice'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/license'
+        exclude 'META-INF/license.txt'
+    }
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
     compile 'com.google.android.gms:play-services-maps:10.2.1'
-    compile files('libs/gurobi.jar')
     compile 'org.projectlombok:lombok:1.16.14'
     compile 'com.android.support:appcompat-v7:25.0.1'
     compile 'com.google.android.gms:play-services-maps:10.2.1'
@@ -35,4 +44,7 @@ dependencies {
     compile 'com.android.support:design:25.0.1'
     provided 'org.glassfish:javax.annotation:10.0-b28'
     testCompile 'junit:junit:4.12'
+    compile 'com.fasterxml.jackson.core:jackson-core:2.7.3'
+    compile 'com.fasterxml.jackson.core:jackson-annotations:2.7.3'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.7.3'
 }

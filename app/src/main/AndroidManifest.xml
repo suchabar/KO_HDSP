@@ -37,6 +37,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".MapsResultActivity"
+            android:label="Your path for shopping">
+        </activity>
+
         <activity android:name=".SupermarketsNearbyActivity"
                   android:label="Supermarkets nearby">
         </activity>

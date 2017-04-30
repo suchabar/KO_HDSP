@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 public class StaticPool
 {
     public static User user = new User();
+    public static List<List<HashMap<String, String>>> polylines;
     public static List<List<Food>> allFood;
     public static List<Food> grains;
     public static List<Food> fruitVegetable;

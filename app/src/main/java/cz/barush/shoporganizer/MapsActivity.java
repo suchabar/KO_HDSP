@@ -23,7 +23,6 @@ import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.Volley;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
@@ -42,15 +41,12 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 import cz.barush.shoporganizer.persistance.entity.Supermarket;
-import cz.barush.shoporganizer.persistance.entity.User;
 import cz.barush.shoporganizer.services.AppController;
 import cz.barush.shoporganizer.utils.Computation;
 import cz.barush.shoporganizer.utils.DirectionsJSONParser;
 import cz.barush.shoporganizer.utils.StaticPool;
-import gurobi.GRBException;
 
 import static cz.barush.shoporganizer.services.AppConfig.GEOMETRY;
 import static cz.barush.shoporganizer.services.AppConfig.GOOGLE_BROWSER_API_KEY;
@@ -170,7 +166,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         StringBuilder googlePlacesUrl =
                 new StringBuilder("https://maps.googleapis.com/maps/api/place/nearbysearch/json?");
         googlePlacesUrl.append("location=").append(latitude).append(",").append(longitude);
-        googlePlacesUrl.append("&radius=").append(StaticPool.user.getMaxRadius());
+        googlePlacesUrl.append("&radius=").append(2000);
         googlePlacesUrl.append("&types=").append(type);
         googlePlacesUrl.append("&sensor=true");
         googlePlacesUrl.append("&key=" + GOOGLE_BROWSER_API_KEY);
@@ -185,9 +181,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         try
                         {
                             List<Supermarket> foundSupermarkets = parseLocationResult(result);
-                            Computation.getBestCombination(foundSupermarkets, myCurrentLocation);
-                            //dat jinaaaam
-                            //printRouteWithBestCombination(foundSupermarkets, bestCombination);
+                            Computation.getBestCombination(foundSupermarkets, myCurrentLocation, getApplicationContext());
                         }
                         catch (JSONException e)
                         {
@@ -322,105 +316,5 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             return false;
         }
         return true;
-    }
-
-    //PRINTING THE ROUTE
-    private void printRouteWithBestCombination(List<Supermarket> foundSupermarkets, List<Integer> bestCombination)
-    {
-        LatLng origin = new LatLng(myCurrentLocation.getLatitude(), myCurrentLocation.getLongitude());
-        LatLng dest = new LatLng(StaticPool.user.getHomeLocation().getLatitude(), StaticPool.user.getHomeLocation().getLongitude());
-        markerPoints = new ArrayList<>();
-        for (int i = 0; i < bestCombination.size(); i++)
-        {
-            Location loc = foundSupermarkets.get(bestCombination.get(i)).getLocation();
-            markerPoints.add(new LatLng(loc.getLatitude(), loc.getLongitude()));
-        }
-
-        // Getting URL to the Google Directions API
-        String url = Computation.getDirectionsUrl(origin, dest, markerPoints);
-        JsonObjectRequest request = new JsonObjectRequest(url,
-                new Response.Listener<JSONObject>()
-                {
-                    @Override
-                    public void onResponse(JSONObject result)
-                    {
-                        Log.i(TAG, "onResponse: Result= " + result.toString());
-                        try
-                        {
-                            List<List<HashMap<String, String>>> routes = parseDirectionsResult(result);
-                            drawRoute(routes);
-                        }
-                        catch (JSONException e)
-                        {
-                            e.printStackTrace();
-                        }
-                    }
-                },
-                new Response.ErrorListener()
-                {
-                    @Override
-                    public void onErrorResponse(VolleyError error)
-                    {
-                        Log.e(TAG, "onErrorResponse: Error= " + error);
-                        Log.e(TAG, "onErrorResponse: Error= " + error.getMessage());
-                    }
-                });
-        AppController.getInstance().addToRequestQueue(request);
-    }
-
-
-    private List<List<HashMap<String, String>>> parseDirectionsResult(JSONObject result) throws JSONException
-    {
-        JSONObject jObject;
-        List<List<HashMap<String, String>>> routes = null;
-
-        try
-        {
-            DirectionsJSONParser parser = new DirectionsJSONParser();
-            routes = parser.parse(result);
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-        return routes;
-    }
-
-    private void drawRoute(List<List<HashMap<String, String>>> result)
-    {
-        ArrayList<LatLng> points = null;
-        PolylineOptions lineOptions = null;
-
-        // Traversing through all the routes
-        for (int i = 0; i < result.size(); i++)
-        {
-            mMap.clear();
-
-            points = new ArrayList<LatLng>();
-            lineOptions = new PolylineOptions();
-
-            // Fetching i-th route
-            List<HashMap<String, String>> path = result.get(i);
-
-            // Fetching all the points in i-th route
-            for (int j = 0; j < path.size(); j++)
-            {
-                HashMap<String, String> point = path.get(j);
-
-                double lat = Double.parseDouble(point.get("lat"));
-                double lng = Double.parseDouble(point.get("lng"));
-                LatLng position = new LatLng(lat, lng);
-
-                points.add(position);
-            }
-
-            // Adding all the points in the route to LineOptions
-            lineOptions.addAll(points);
-            lineOptions.width(2);
-            lineOptions.color(Color.RED);
-        }
-
-        // Drawing polyline in the Google Map for the i-th route
-        mMap.addPolyline(lineOptions);
     }
 }
