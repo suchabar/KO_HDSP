@@ -7,6 +7,8 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 
+import java.util.concurrent.CountDownLatch;
+
 import static cz.barush.shoporganizer.services.AppConfig.TAG;
 
 /**
@@ -15,7 +17,6 @@ import static cz.barush.shoporganizer.services.AppConfig.TAG;
 
 public class AppController extends Application
 {
-
     private static AppController mInstance;
     private RequestQueue mRequestQueue;
 

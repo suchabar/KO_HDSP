@@ -25,7 +25,7 @@ public class Supermarket
 {
     Location location;
     String name;
-    HashMap<Food, Integer> priceList;
+    HashMap<Food, Double> priceList;
 
     @Getter
     @AllArgsConstructor

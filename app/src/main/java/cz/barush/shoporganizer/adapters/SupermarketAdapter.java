@@ -45,7 +45,7 @@ public class SupermarketAdapter extends ArrayAdapter<Supermarket>
 
             holder = new SupermarketHolder();
             holder.name = (TextView) row.findViewById(R.id.name);
-            holder.distance = (TextView) row.findViewById(R.id.distance);
+            //holder.distance = (TextView) row.findViewById(R.id.distance);
 
             row.setTag(holder);
         }
@@ -55,7 +55,7 @@ public class SupermarketAdapter extends ArrayAdapter<Supermarket>
         }
         Supermarket supermarket = data.get(position);
         holder.name.setText(supermarket.getName());
-        holder.distance.setText(supermarket.getDistance() + " m");
+        //holder.distance.setText(supermarket.getDistance() + " m");
 
         return row;
     }
@@ -63,6 +63,6 @@ public class SupermarketAdapter extends ArrayAdapter<Supermarket>
     static class SupermarketHolder
     {
         TextView name;
-        TextView distance;
+        //TextView distance;
     }
 }

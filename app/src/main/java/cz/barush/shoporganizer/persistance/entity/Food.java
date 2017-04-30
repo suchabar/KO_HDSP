@@ -22,13 +22,13 @@ public class Food
     String name;
     FoodGroup category;
     boolean isSelected = true;
-    int mergedPrice;
+    double mergedPrice;
     int gramsToBuy;
-    int energy;
-    int carbs;
-    int proteins;
-    int fats;
-    int fibres;
+    double energy;
+    double carbs;
+    double proteins;
+    double fats;
+    double fibres;
 
     @Getter
     @AllArgsConstructor

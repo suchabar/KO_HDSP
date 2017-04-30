@@ -1,11 +1,11 @@
 package cz.barush.shoporganizer.utils;
 
 import android.location.Location;
-import android.util.Log;
 
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
+import com.android.volley.Network;
+import com.android.volley.Request;
 import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.RequestFuture;
 import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONArray;
@@ -13,19 +13,19 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 
 import cz.barush.shoporganizer.persistance.entity.Food;
 import cz.barush.shoporganizer.persistance.entity.Supermarket;
 import cz.barush.shoporganizer.persistance.entity.User;
 import cz.barush.shoporganizer.services.AppController;
+import cz.barush.shoporganizer.services.MyErrorListener;
+import cz.barush.shoporganizer.services.MyResponseListener;
 import gurobi.GRB;
-import gurobi.GRBCallback;
 import gurobi.GRBEnv;
 import gurobi.GRBException;
 import gurobi.GRBLinExpr;
@@ -56,13 +56,157 @@ public class Computation
     public static List<List<Integer>> gramsToBuyBestSolution = new ArrayList<>();
     public static GRBModel model;
     public static List<Integer> bestSupermarketCombination = new ArrayList<>();
+    public static int[][] distances;
     static List<Supermarket> supermarketsNearby;
     static GRBVar[][] edges;
-    static int[][] distances;
 
     public Computation(GRBVar[][] newEdges)
     {
         this.edges = newEdges;
+    }
+
+    public static void getBestCombination(List<Supermarket> supermarkets, Location currentLocation)
+    {
+        supermarketsNearby = supermarkets;
+        User user = StaticPool.getInstance().user;
+        if (user.getHomeLocation() == null)
+        {
+            Location home = new Location("Another provider");
+            home.setLatitude(50.076739);
+            home.setLongitude(14.417959);
+            user.setHomeLocation(home);
+        }
+        initializeDistances(supermarkets, currentLocation, user.getHomeLocation());
+    }
+
+    public static void initializeDistances(List<Supermarket> supermarkets, Location currentLocation, Location home)
+    {
+        //+ currentLocation + locationOfHome
+        distances = new int[supermarkets.size() + 3][supermarkets.size() + 3];
+        for (int i = 0; i < distances.length; i++)
+        {
+            for (int j = 0; j < distances.length; j++)
+            {
+                //Self cycle
+                if (i == j) continue;
+                //Dummy node TO supermarkets, distances[i][j] = INT MAX
+                if ((i == 2 && j > 2) || (j == 2 && i > 2))
+                {
+                    distances[i][j] = Integer.MAX_VALUE;
+                    continue;
+                }
+                //Dummy node TO Home or CurrentLocation, distances[i][j] = 0
+                else if ((i == 2 && j < 2) || (j == 2 && i < 2)) continue;
+
+                Location location1;
+                Location location2;
+                if (i == 0) location1 = currentLocation;
+                else if (i == 1) location1 = home;
+                else location1 = supermarkets.get(i - 3).getLocation();
+
+                if (j == 0) location2 = currentLocation;
+                else if (j == 1) location2 = home;
+                else location2 = supermarkets.get(j - 3).getLocation();
+
+                computeCommutingTime(location1, location2, i, j);
+            }
+        }
+    }
+    public static int pendingRequests = 0;
+    private static void computeCommutingTime(Location location1, Location location2, final int i, final int j)
+    {
+        String url = getDirectionsUrl(new LatLng(location1.getLatitude(), location1.getLongitude()),
+                new LatLng(location2.getLatitude(), location2.getLongitude()), new ArrayList<LatLng>());
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, new MyResponseListener(i, j), new MyErrorListener());
+        AppController.getInstance().addToRequestQueue(request);
+        pendingRequests++;
+    }
+
+    public static List<Integer> continueGetBestCombination() throws GRBException
+    {
+        User user = StaticPool.getInstance().user;
+        setBRMEntities(user);
+        int[] balancedNutrients = getBalancedNutrients(user);
+
+        List<List<Integer>> uniqueSets = generateAllSupermarketSubsets(supermarketsNearby);
+        //List<List<Integer>> uniqueFeasibleSets = TSPThroughAllUniqueSubsets(uniqueSets);
+
+        int bestMinValue = Integer.MAX_VALUE;
+        for (List<Integer> s : uniqueSets)
+        {
+            mergeSupermarketsPriceLists(s);
+            List<List<Integer>> gramsToBuy = solveStiglersProblem(StaticPool.allFood, balancedNutrients);
+            int objectValue = (int) model.get(GRB.DoubleAttr.ObjVal);
+            if (objectValue < bestMinValue)
+            {
+                bestMinValue = objectValue;
+                for (int i = 0; i < gramsToBuy.size(); i++)
+                    Collections.copy(gramsToBuyBestSolution.get(i), gramsToBuy.get(i));
+                bestSupermarketCombination.clear();
+                bestSupermarketCombination.addAll(s);
+            }
+        }
+        return bestSupermarketCombination;
+    }
+
+    public static int[] getBalancedNutrients(User user)
+    {
+        int[] balancedNutrients = new int[5];
+        balancedNutrients[0] = user.getBasalEnergy() - user.getEatenEnergy();
+        balancedNutrients[1] = user.getBasalCarbs() - user.getEatenCarbs();
+        balancedNutrients[2] = user.getBasalProteins() - user.getEatenProteins();
+        balancedNutrients[3] = user.getBasalFats() - user.getEatenFats();
+        balancedNutrients[4] = user.getBasalFibres() - user.getEatenFibres();
+        return balancedNutrients;
+    }
+
+    public static void setBRMEntities(User user)
+    {
+        if (user.getGender() == User.Gender.MAN)
+            user.setBasalEnergy((int) ((10 * user.getWeight()) + (6.25 * user.getHeight()) - (5 * user.getAge()) + 5));
+        else
+            user.setBasalEnergy((int) ((10 * user.getWeight()) + (6.25 * user.getHeight()) - (5 * user.getAge()) - 161));
+        user.setBasalEnergy((int) (user.getBasalEnergy() * user.getActivity().getMultiplicativeConstant() * KCAL_TO_KJ));
+        user.setBasalCarbs((int) ((user.getBasalEnergy() * CARBS_RATIO) / CARBS_KJ_G));
+        user.setBasalProteins((int) ((user.getBasalEnergy() * PROTEINS_RATIO) / PROTEINS_KJ_G));
+        user.setBasalFats((int) ((user.getBasalEnergy() * FAT_RATIO) / FAT_KJ_G));
+        user.setBasalCarbs((int) ((user.getBasalFibres() * FIBRES_RATIO) / FIBRES_KJ_G));
+    }
+
+    public static List<List<Integer>> generateAllSupermarketSubsets(List<Supermarket> supermarkets)
+    {
+        List<List<Integer>> uniqueSets = new ArrayList<>();
+        for (int i = 0; i < (2 * supermarkets.size()) - 1; i++)
+        {
+            int rank = i;
+            List<Integer> newSet = new ArrayList<>();
+            for (int j = supermarkets.size() - 1; j >= 0; j--)
+            {
+                if (rank % 2 == 1)
+                {
+                    if (!newSet.contains(rank)) newSet.add(rank);
+                }
+                rank = (int) Math.floor((double) rank / 2);
+            }
+        }
+        return uniqueSets;
+    }
+
+    public static void mergeSupermarketsPriceLists(List<Integer> supermarkets)
+    {
+        HashMap<String, List<Double>> preMergedPriceList = new HashMap<>(32);
+
+        for (int i = 0; i < supermarkets.size(); i++)
+        {
+            HashMap<Food, Double> prices = supermarketsNearby.get(supermarkets.get(i)).getPriceList();
+            for (Food f : prices.keySet()) preMergedPriceList.get(f.getName()).add(prices.get(f));
+        }
+        for (int i = 0; i < StaticPool.allFood.size(); i++)
+            for (int j = 0; j < StaticPool.allFood.get(i).size(); j++)
+            {
+                StaticPool.allFood.get(i).get(j).setMergedPrice(Collections.min(preMergedPriceList.get(
+                        StaticPool.allFood.get(i).get(j).getName())));
+            }
     }
 
     public static List<List<Integer>> solveStiglersProblem(List<List<Food>> nutritionTable, int[] balancedNutrients) throws GRBException
@@ -154,167 +298,6 @@ public class Computation
 
         return gramsToBuy;
     }
-
-    public static List<List<Integer>> generateAllSupermarketSubsets(Supermarket[] supermarkets)
-    {
-        List<List<Integer>> uniqueSets = new ArrayList<>();
-        for (int i = 0; i < (2 * supermarkets.length) - 1; i++)
-        {
-            int rank = i;
-            List<Integer> newSet = new ArrayList<>();
-            for (int j = supermarkets.length - 1; j >= 0; j--)
-            {
-                if (rank % 2 == 1)
-                {
-                    if(!newSet.contains(rank))newSet.add(rank);
-                }
-                rank = (int) Math.floor((double) rank / 2);
-            }
-        }
-        return uniqueSets;
-    }
-
-    public static List<List<Food>> mergeSupermarketsPriceLists(List<Integer> supermarkets)
-    {
-        HashMap<String, List<Integer>> preMergedPriceList = new HashMap<>(32);
-
-        List<List<Food>> mergedPriceList = StaticPool.initializeFood();
-        for (int i = 0; i < supermarkets.size(); i++)
-        {
-            HashMap<Food, Integer> prices = supermarketsNearby.get(supermarkets.get(i)).getPriceList();
-            for (Food f : prices.keySet()) preMergedPriceList.get(f.getName()).add(prices.get(f));
-        }
-        for (int i = 0; i < mergedPriceList.size(); i++)
-            for (int j = 0; j < mergedPriceList.get(i).size(); j++)
-                mergedPriceList.get(i).get(j).setMergedPrice(Collections.min(preMergedPriceList.get(mergedPriceList.get(i).get(j).getName())));
-
-        return mergedPriceList;
-    }
-
-    public static List<Integer> getBestCombination(List<Supermarket> supermarkets, Location currentLocation) throws GRBException
-    {
-        supermarketsNearby = supermarkets;
-        User user = StaticPool.getInstance().user;
-        setBRMEntities(user);
-        int[] balancedNutrients = getBalancedNutrients(user);
-        initializeDistances(supermarkets, currentLocation, user.getHomeLocation());
-
-        List<List<Integer>> uniqueSets = generateAllSupermarketSubsets((Supermarket[]) supermarketsNearby.toArray());
-        //List<List<Integer>> uniqueFeasibleSets = TSPThroughAllUniqueSubsets(uniqueSets);
-
-        int bestMinValue = Integer.MAX_VALUE;
-        for (List<Integer> s : uniqueSets)
-        {
-            List<List<Food>> nutritionTable = mergeSupermarketsPriceLists(s);
-            List<List<Integer>> gramsToBuy = solveStiglersProblem(nutritionTable, balancedNutrients);
-            int objectValue = (int) model.get(GRB.DoubleAttr.ObjVal);
-            if (objectValue < bestMinValue)
-            {
-                bestMinValue = objectValue;
-                for (int i = 0; i < gramsToBuy.size(); i++)
-                    Collections.copy(gramsToBuyBestSolution.get(i), gramsToBuy.get(i));
-                bestSupermarketCombination.clear();
-                bestSupermarketCombination.addAll(s);
-            }
-        }
-        return bestSupermarketCombination;
-    }
-
-    public static int[] getBalancedNutrients(User user)
-    {
-        int[] balancedNutrients = new int[5];
-        balancedNutrients[0] = user.getBasalEnergy() - user.getEatenEnergy();
-        balancedNutrients[1] = user.getBasalCarbs() - user.getEatenCarbs();
-        balancedNutrients[2] = user.getBasalProteins() - user.getEatenProteins();
-        balancedNutrients[3] = user.getBasalFats() - user.getEatenFats();
-        balancedNutrients[4] = user.getBasalFibres() - user.getEatenFibres();
-        return balancedNutrients;
-    }
-
-    public static void setBRMEntities(User user)
-    {
-        if (user.getGender() == User.Gender.MAN)
-            user.setBasalEnergy((int) ((10 * user.getWeight()) + (6.25 * user.getHeight()) - (5 * user.getAge()) + 5));
-        else
-            user.setBasalEnergy((int) ((10 * user.getWeight()) + (6.25 * user.getHeight()) - (5 * user.getAge()) - 161));
-        user.setBasalEnergy((int) (user.getBasalEnergy() * user.getActivity().getMultiplicativeConstant() * KCAL_TO_KJ));
-        user.setBasalCarbs((int) ((user.getBasalEnergy() * CARBS_RATIO) / CARBS_KJ_G));
-        user.setBasalProteins((int) ((user.getBasalEnergy() * PROTEINS_RATIO) / PROTEINS_KJ_G));
-        user.setBasalFats((int) ((user.getBasalEnergy() * FAT_RATIO) / FAT_KJ_G));
-        user.setBasalCarbs((int) ((user.getBasalFibres() * FIBRES_RATIO) / FIBRES_KJ_G));
-    }
-
-    public static void initializeDistances(List<Supermarket> supermarkets, Location currentLocation, Location home)
-    {
-        //+ currentLocation + locationOfHome
-        distances = new int[supermarkets.size() + 3][supermarkets.size() + 3];
-        for (int i = 0; i < distances.length; i++)
-        {
-            for (int j = 0; j < distances.length; j++)
-            {
-                //Self cycle
-                if (i == j) continue;
-                //Dummy node TO supermarkets, distances[i][j] = INT MAX
-                if ((i == 2 && j > 2) || (j == 2 && i > 2))
-                {
-                    distances[i][j] = Integer.MAX_VALUE;
-                    continue;
-                }
-                //Dummy node TO Home or CurrentLocation, distances[i][j] = 0
-                else if ((i == 2 && j < 2) || (j == 2 && i < 2)) continue;
-
-                Location location1 = supermarkets.get(i).getLocation();
-                Location location2 = supermarkets.get(j).getLocation();
-                if (i == 0) location1 = currentLocation;
-                if (i == 1) location1 = home;
-                if (j == 0) location2 = currentLocation;
-                if (j == 1) location2 = home;
-
-                computeCommutingTime(location1, location2, i, j);
-            }
-        }
-    }
-
-    private static void computeCommutingTime(Location location1, Location location2, final int i, final int j)
-    {
-        String url = getDirectionsUrl(new LatLng(location1.getLatitude(), location1.getLongitude()),
-                new LatLng(location2.getLatitude(), location2.getLongitude()), new ArrayList<LatLng>());
-        JsonObjectRequest request = new JsonObjectRequest(url,
-                new Response.Listener<JSONObject>()
-                {
-                    @Override
-                    public void onResponse(JSONObject result)
-                    {
-                        Log.i(TAG, "onResponse: Result= " + result.toString());
-                        try
-                        {
-                            JSONArray routeArray = result.getJSONArray("routes");
-                            JSONObject routes = routeArray.getJSONObject(0);
-
-                            JSONArray newTempARr = routes.getJSONArray("legs");
-                            JSONObject newDisTimeOb = newTempARr.getJSONObject(0);
-
-                            JSONObject distOb = newDisTimeOb.getJSONObject("distance");
-                            distances[i][j] = Math.round(Integer.valueOf(distOb.getString("text").split(" ")[0])*1000);
-                        }
-                        catch (JSONException e)
-                        {
-                            e.printStackTrace();
-                        }
-                    }
-                },
-                new Response.ErrorListener()
-                {
-                    @Override
-                    public void onErrorResponse(VolleyError error)
-                    {
-                        Log.e(TAG, "onErrorResponse: Error= " + error);
-                        Log.e(TAG, "onErrorResponse: Error= " + error.getMessage());
-                    }
-                });
-        AppController.getInstance().addToRequestQueue(request);
-    }
-
 
     public static String getDirectionsUrl(LatLng origin, LatLng dest, List<LatLng> markerPoints)
     {

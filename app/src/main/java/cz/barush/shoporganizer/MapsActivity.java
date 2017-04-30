@@ -18,9 +18,13 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.RequestFuture;
+import com.android.volley.toolbox.Volley;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -38,8 +42,10 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import cz.barush.shoporganizer.persistance.entity.Supermarket;
+import cz.barush.shoporganizer.persistance.entity.User;
 import cz.barush.shoporganizer.services.AppController;
 import cz.barush.shoporganizer.utils.Computation;
 import cz.barush.shoporganizer.utils.DirectionsJSONParser;
@@ -169,7 +175,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         googlePlacesUrl.append("&sensor=true");
         googlePlacesUrl.append("&key=" + GOOGLE_BROWSER_API_KEY);
 
-        JsonObjectRequest request = new JsonObjectRequest(googlePlacesUrl.toString(),
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, googlePlacesUrl.toString(),
                 new Response.Listener<JSONObject>()
                 {
                     @Override
@@ -179,14 +185,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         try
                         {
                             List<Supermarket> foundSupermarkets = parseLocationResult(result);
-                            List<Integer> bestCombination = Computation.getBestCombination(foundSupermarkets, myCurrentLocation);
-                            printRouteWithBestCombination(foundSupermarkets, bestCombination);
+                            Computation.getBestCombination(foundSupermarkets, myCurrentLocation);
+                            //dat jinaaaam
+                            //printRouteWithBestCombination(foundSupermarkets, bestCombination);
                         }
                         catch (JSONException e)
-                        {
-                            e.printStackTrace();
-                        }
-                        catch (GRBException e)
                         {
                             e.printStackTrace();
                         }
@@ -201,8 +204,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Log.e(TAG, "onErrorResponse: Error= " + error.getMessage());
                     }
                 });
-
-        AppController.getInstance().addToRequestQueue(request);
+        RequestQueue queue = Volley.newRequestQueue(this);
+        queue.add(request);
     }
 
     private List<Supermarket> parseLocationResult(JSONObject result) throws JSONException
@@ -322,14 +325,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     //PRINTING THE ROUTE
-    private void printRouteWithBestCombination(List<Integer> bestCombination, List<Supermarket> foundSupermarkets)
+    private void printRouteWithBestCombination(List<Supermarket> foundSupermarkets, List<Integer> bestCombination)
     {
         LatLng origin = new LatLng(myCurrentLocation.getLatitude(), myCurrentLocation.getLongitude());
         LatLng dest = new LatLng(StaticPool.user.getHomeLocation().getLatitude(), StaticPool.user.getHomeLocation().getLongitude());
         markerPoints = new ArrayList<>();
         for (int i = 0; i < bestCombination.size(); i++)
         {
-            Location loc = bestCombination.get(i).getLocation();
+            Location loc = foundSupermarkets.get(bestCombination.get(i)).getLocation();
             markerPoints.add(new LatLng(loc.getLatitude(), loc.getLongitude()));
         }
 
