@@ -41,10 +41,10 @@ public class StaticPool
         HashMap<Food, Double> priceList = new HashMap<>();
         if (grains == null) initializeFood();
 
-        double[] grainsPrices = {0.068, 0.061, 0.076, 0.050, 0.020, 0.039};
-        double[] fruitVegetablePrices = {0.038, 0.019, 0.086, 0.018, 0.043, 0.027, 0.026, 0.029, 0.048, 0.115};
-        double[] diaryMeatPrices = {0.431, 0.120, 0.027, 0.618, 0.138, 0.108, 0.134, 0.182, 0.081, 0.300};
-        double[] oilSweetPrices = {0.125, 0.150, 0.293, 0.445, 0.124, 0.104, 0.024, 0.325};
+        double[] grainsPrices = {0.325, 0.029, 0.045, 0.024, 0.022, 0.022};
+        double[] fruitVegetablePrices = {0.045, 0.03, 0.059, 0.029, 0.049, 0.033, 0.029, 0.035, 0.049, 0.109};
+        double[] diaryMeatPrices = {0.399, 0.166, 0.066, 0.619, 0.109, 0.188, 0.350, 0.500, 0.120, 0.300};
+        double[] oilSweetPrices = {0.115, 0.150, 0.293, 0.435, 0.08, 0.09, 0.024, 0.120};
 
         for (int i = 0; i < grains.size(); i++)
             priceList.put(grains.get(i), grainsPrices[i] + (Math.random() * (0.5 * grainsPrices[i])));

@@ -41,7 +41,7 @@ public class User
     int eatenFibres;
 
     //In metres
-    int maxDistance = 6000;
+    int maxDistance = 12000;
     Location homeLocation;
     Location currentLocation;
 

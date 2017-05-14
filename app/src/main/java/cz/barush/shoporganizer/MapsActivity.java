@@ -155,8 +155,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (myCurrentLocation == null)
         {
-            Toast.makeText(MapsActivity.this, "Go outside of the building, we couldn't find your location", Toast.LENGTH_LONG).show();
-        } else loadNearByPlaces(myCurrentLocation.getLatitude(), myCurrentLocation.getLongitude());
+            loadNearByPlaces(50.076739, 14.417959);
+            //Toast.makeText(MapsActivity.this, "Go outside of the building, we couldn't find your location", Toast.LENGTH_LONG).show();
+        }
+        else
+        {
+            loadNearByPlaces(50.076739, 14.417959);
+            //loadNearByPlaces(myCurrentLocation.getLatitude(), myCurrentLocation.getLongitude());
+        }
     }
 
     private void loadNearByPlaces(double latitude, double longitude)
@@ -166,7 +172,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         StringBuilder googlePlacesUrl =
                 new StringBuilder("https://maps.googleapis.com/maps/api/place/nearbysearch/json?");
         googlePlacesUrl.append("location=").append(latitude).append(",").append(longitude);
-        googlePlacesUrl.append("&radius=").append(2000);
+        googlePlacesUrl.append("&radius=").append(1500);
         googlePlacesUrl.append("&types=").append(type);
         googlePlacesUrl.append("&sensor=true");
         googlePlacesUrl.append("&key=" + GOOGLE_BROWSER_API_KEY);

@@ -79,8 +79,8 @@ public class Computation
         if (user.getHomeLocation() == null)
         {
             Location home = new Location("Another provider");
-            home.setLatitude(50.076739);
-            home.setLongitude(14.417959);
+            home.setLatitude(50.080542);
+            home.setLongitude(14.392588);
             user.setHomeLocation(home);
         }
         initializeDistances(supermarkets, currentLocation, user.getHomeLocation());
